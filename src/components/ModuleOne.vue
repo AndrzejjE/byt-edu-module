@@ -1,6 +1,6 @@
 <template>
   <div class="Page">
-    <div v-if="level === 0" class="game-area">
+    <div v-if="state.level === 0" class="game-area">
       <div>
         <button v-for="lvl in 3" :key="lvl" @click="selectLevel(lvl)" class="level-button">
           Poziom {{ lvl }}
@@ -9,26 +9,26 @@
     </div>
     <div v-else class="game-area">
       <div class="question-counter">
-        <p>Pytanie: {{ questionNumber }} / 10</p>
+        <p>Pytanie: {{ state.questionNumber }} / 10</p>
       </div>
       <div class="score">
-        <p>Poprawne odpowiedzi: {{ correctAnswers }}</p>
+        <p>Poprawne odpowiedzi: {{ state.correctAnswers }}</p>
       </div>
       <div class="question">
-        <template v-if="level === 1">
-          <span v-for="dot in number1" :key="dot" class="dot"></span>
+        <template v-if="state.level === 1">
+          <span v-for="dot in state.number1" :key="dot" class="dot"></span>
           <span class="comparison">[?]</span>
-          <span v-for="dot in number2" :key="dot" class="dot"></span>
+          <span v-for="dot in state.number2" :key="dot" class="dot"></span>
         </template>
-        <template v-else-if="level === 2">
-          <p>{{ number1 }}</p>
+        <template v-else-if="state.level === 2">
+          <p>{{ state.number1 }}</p>
           <span class="comparison">[?]</span>
-          <p>{{ number2 }}</p>
+          <p>{{ state.number2 }}</p>
         </template>
-        <template v-else-if="level === 3">
-          <p>{{ expression1 }}</p>
+        <template v-else-if="state.level === 3">
+          <p>{{ state.expression1 }}</p>
           <span class="comparison">[?]</span>
-          <p>{{ expression2 }}</p>
+          <p>{{ state.expression2 }}</p>
         </template>
       </div>
       <div class="buttons">
@@ -36,95 +36,101 @@
         <button @click="checkAnswer('equal')">=</button>
         <button @click="checkAnswer(false)">&lt;</button>
       </div>
-      <div v-if="showResult" class="result">
-        <p>{{ resultMessage }}</p>
+      <div v-if="state.showResult" class="result">
+        <p>{{ state.resultMessage }}</p>
         <button @click="nextQuestion">Następne pytanie</button>
       </div>
     </div>
   </div>
 </template>
 
+<script setup>
+import {reactive} from 'vue'
 
-<script>
-import {reactive, toRefs} from "vue";
+const state = reactive({
+  level: 0,
+  number1: 5,
+  number2: 2,
+  expression1: "",
+  expression2: "",
+  correctAnswers: 0,
+  showResult: false,
+  resultMessage: "",
+  questionNumber: 0,
+  answered: false,
+});
 
-export default {
-  name: 'EduM',
-  setup() {
-    const state = reactive({
-      level: 0,
-      number1: 5,
-      number2: 2,
-      expression1: '',
-      expression2: '',
-      correctAnswers: 0,
-      showResult: false,
-      resultMessage: '',
-      questionNumber: 0,
-      answered: false
-    });
-
-    const selectLevel = (lvl) => {
-      state.level = lvl;
-      state.questionNumber = 0;
-      nextQuestion();
-    };
-
-    const nextQuestion = () => {
-      state.answered = false;
-      if (state.questionNumber >= 10) {
-        state.level = 0;
-        state.questionNumber = 0;
-        return;
-      }
-      state.questionNumber++;
-      if (state.level === 1) {
-        state.number1 = Math.floor(Math.random() * 10) + 1;
-        state.number2 = Math.floor(Math.random() * 10) + 1;
-      } else if (state.level === 2) {
-        state.number1 = Math.floor(Math.random() * 100) + 1;
-        state.number2 = Math.floor(Math.random() * 100) + 1;
-      } else if (state.level === 3) {
-        let number1 = Math.floor(Math.random() * 10) + 1;
-        let number2 = Math.floor(Math.random() * 10) + 1;
-        let number3 = Math.floor(Math.random() * 10) + 1;
-        let number4 = Math.floor(Math.random() * 10) + 1;
-
-        state.expression1 = `${number1} + ${number2}`;
-        state.expression2 = `${number3} + ${number4}`;
-        state.number1 = number1 + number2;
-        state.number2 = number3 + number4;
-      }
-      state.showResult = false;
-      state.resultMessage = '';
-    };
-    const checkAnswer = (selectedAnswer) => {
-      if (state.answered) {
-        return;
-      }
-      state.answered = true;
-      state.showResult = true;
-      let result1 = state.number1;
-      let result2 = state.number2;
-      console.log(result1);
-      console.log("-------------")
-      console.log(result2);
-      let isCorrect = false;
-      if (selectedAnswer === 'equal') {
-        isCorrect = result1 === result2;
-      } else if (selectedAnswer === true) {
-        isCorrect = result1 > result2;
-      } else if (selectedAnswer === false) {
-        isCorrect = result1 < result2;
-      }
-
-      state.resultMessage = isCorrect ? 'Dobra odpowiedź!' : 'Zła odpowiedź.';
-      if (isCorrect) state.correctAnswers++;
-    };
-
-    return {...toRefs(state), selectLevel, nextQuestion, checkAnswer};
-  }
+const selectLevel = (lvl) => {
+  resetState();
+  state.level = lvl;
+  nextQuestion();
 };
+
+const nextQuestion = () => {
+  state.answered = false;
+  if (state.questionNumber >= 10) {
+    resetState();
+    return;
+  }
+  state.questionNumber++;
+  const randomNum = (max, min = 1) => Math.floor(Math.random() * max) + min;
+
+  switch (state.level) {
+    case 1:
+      state.number1 = randomNum(10);
+      state.number2 = randomNum(10);
+      break;
+    case 2:
+      state.number1 = randomNum(100);
+      state.number2 = randomNum(100);
+      break;
+    case 3:
+      // eslint-disable-next-line no-case-declarations
+      const [num1, num2, num3, num4] = [randomNum(10), randomNum(10), randomNum(10), randomNum(10)];
+      state.expression1 = `${num1} + ${num2}`;
+      state.expression2 = `${num3} + ${num4}`;
+      state.number1 = num1 + num2;
+      state.number2 = num3 + num4;
+      break;
+  }
+  resetResult();
+};
+
+const checkAnswer = (selectedAnswer) => {
+  if (state.answered) return;
+
+  state.answered = true;
+  state.showResult = true;
+  const { number1, number2 } = state;
+
+  let isCorrect = false;
+  switch (selectedAnswer) {
+    case "equal":
+      isCorrect = number1 === number2;
+      break;
+    case true:
+      isCorrect = number1 > number2;
+      break;
+    case false:
+      isCorrect = number1 < number2;
+      break;
+  }
+
+  state.resultMessage = isCorrect ? "Dobra odpowiedź!" : "Zła odpowiedź.";
+  if (isCorrect) state.correctAnswers++;
+};
+
+const resetState = () => {
+  state.level = 0;
+  state.questionNumber = 0;
+  resetResult();
+};
+
+const resetResult = () => {
+  state.showResult = false;
+  state.resultMessage = "";
+};
+
 </script>
 
 <style scoped>
@@ -224,6 +230,4 @@ export default {
   color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
-
 </style>
-
